@@ -935,7 +935,7 @@ async function syncModule(module) {
   try {
     setSyncStatus(true);
     const payload = encodeURIComponent(JSON.stringify({ sheetId: SHEET_ID, module, action: 'sync', rows }));
-    await fetch(`${SCRIPT_URL}?data=${payload}`);
+    await fetch(`${SCRIPT_URL}?data=${payload}`, {mode: 'no-cors'});
   } catch(err) { console.error('Sync error:', err); }
   finally { setSyncStatus(false); }
 }
