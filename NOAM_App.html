@@ -907,7 +907,7 @@ function clearAllData() {
 
 // ── GOOGLE SHEETS CONFIG ──
 const SHEET_ID = '1mSUSSUyEtqmlJ3KruaI-oUgmlrqE6D9dl3gBlOTfDeg';
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyfLBe32E-i89tEBbXJY2bZO1AiHX3n1XYHptIqhWJyemVzyqx9nHwKAejLhAN5e4TqMA/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwYynbItAmgV5VtKmazL6-YBQClUkNuwbPyOEspcQuKQ1Zmk-Tys9klILJGFetKme4Zzg/exec';
 
 const SCHEMAS = {
   produccion: ['id','fecha','turno','responsable','dispensador','plus','megapack','granel','bobinas','desperdicio','paradas','obs'],
@@ -928,6 +928,22 @@ function setSyncStatus(on) {
   if (el) el.style.display = on ? 'flex' : 'none';
 }
 
+function jsonpCall(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = '_noam_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    window[cbName] = function(data) {
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+      resolve(data);
+    };
+    const script = document.createElement('script');
+    script.src = url + '&callback=' + cbName;
+    script.onerror = () => { delete window[cbName]; reject(new Error('JSONP error')); };
+    document.head.appendChild(script);
+    setTimeout(() => { delete window[cbName]; if(script.parentNode) script.parentNode.removeChild(script); reject(new Error('timeout')); }, 15000);
+  });
+}
+
 async function syncModule(module) {
   const schema = SCHEMAS[module];
   if (!schema) return;
@@ -935,8 +951,8 @@ async function syncModule(module) {
   try {
     setSyncStatus(true);
     const payload = encodeURIComponent(JSON.stringify({ sheetId: SHEET_ID, module, action: 'sync', rows }));
-    await fetch(`${SCRIPT_URL}?data=${payload}`, {mode: 'no-cors'});
-  } catch(err) { console.error('Sync error:', err); }
+    await jsonpCall(`${SCRIPT_URL}?action=sync&data=${payload}`);
+  } catch(err) { console.error('Sync error:', module, err); }
   finally { setSyncStatus(false); }
 }
 
@@ -944,11 +960,10 @@ async function loadFromSheets() {
   setSyncStatus(true);
   for (const mod of Object.keys(SCHEMAS)) {
     try {
-      const res = await fetch(`${SCRIPT_URL}?sheetId=${SHEET_ID}&module=${mod}`);
-      const json = await res.json();
-      if (json.rows && json.rows.length > 1) {
-        const headers = json.rows[0];
-        DB[mod] = json.rows.slice(1).map(row => {
+      const data = await jsonpCall(`${SCRIPT_URL}?sheetId=${SHEET_ID}&module=${mod}`);
+      if (data.rows && data.rows.length > 1) {
+        const headers = data.rows[0];
+        DB[mod] = data.rows.slice(1).map(row => {
           const obj = {};
           headers.forEach((h, i) => { obj[h] = row[i]; });
           NUMS.forEach(k => { if (obj[k] !== undefined && obj[k] !== '') obj[k] = parseFloat(obj[k]) || 0; });
