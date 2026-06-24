@@ -423,6 +423,12 @@ tr:hover td{background:#fafaf8}
         <select id="v-estado"><option>Pendiente despacho</option><option>Despachado</option><option>Cobrado</option></select>
       </div>
     </div>
+    <div class="form-grid form-grid-4" style="margin-top:12px">
+      <div class="field"><label>RIF del cliente</label><input type="text" id="v-rif" placeholder="J-XXXXXXXXX-X"></div>
+      <div class="field"><label>Fecha vencimiento NE</label><input type="date" id="v-fvcto"></div>
+      <div class="field"><label>Tasa BCV del día</label><input type="number" id="v-tasa" placeholder="0.00" step="0.01"></div>
+      <div class="field"><label>Dirección de entrega</label><input type="text" id="v-dirEntrega" placeholder="Dirección del cliente"></div>
+    </div>
     <div class="field" style="margin-top:12px"><label>Observaciones</label><textarea id="v-obs" placeholder="Notas adicionales..."></textarea></div>
     <div class="btn-row" style="margin-top:12px">
       <button class="btn btn-primary" onclick="saveVenta()">Guardar venta</button>
@@ -912,7 +918,7 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybYapOZbT9Y1aXwFO3p
 const SCHEMAS = {
   produccion: ['id','fecha','turno','responsable','dispensador','plus','megapack','granel','bobinas','desperdicio','paradas','obs'],
   inventario: ['id','fecha','periodo','dispensador','plus','megapack','granel','bobinas','bxfab','ep1','ep2','ep3','es','obs'],
-  ventas: ['id','fecha','tipo','ndoc','cliente','producto','bultos','precio','monto','vendedor','condicion','estado','obs'],
+  ventas: ['id','fecha','tipo','ndoc','cliente','producto','bultos','precio','monto','vendedor','condicion','estado','obs','rif','fvcto','tasa','dirEntrega'],
   cobranzas: ['id','fecha','banco','cliente','monto','ref','tasa','bs','obs'],
   cxc: ['id','femision','fvcto','cliente','ndoc','monto','estado','vendedor'],
   cxp: ['id','fecha','categoria','beneficiario','concepto','monto','fvcto','estado'],
@@ -1100,7 +1106,8 @@ function saveVenta() {
   const r = {
     id:uid(), fecha:val('v-fecha'), tipo:val('v-tipo'), ndoc:val('v-ndoc'), cliente:val('v-cliente'),
     producto:val('v-prod'), bultos:num('v-bultos'), precio:num('v-precio'), monto:num('v-monto'),
-    vendedor:val('v-vendedor'), condicion:val('v-condicion'), estado:val('v-estado'), obs:val('v-obs')
+    vendedor:val('v-vendedor'), condicion:val('v-condicion'), estado:val('v-estado'), obs:val('v-obs'),
+    rif:val('v-rif'), fvcto:val('v-fvcto'), tasa:num('v-tasa'), dirEntrega:val('v-dirEntrega')
   };
   DB.ventas.unshift(r); save(); renderVentas(); refreshMetrics('ventas');
   syncModule('ventas'); clearForm('ventas'); alert('Venta guardada ✓');
@@ -1376,6 +1383,8 @@ function generarNE(id) {
   const neNum = r.ndoc || ('NE-' + String(DB.ventas.indexOf(r) + 1).padStart(4,'0'));
   const precioUnit = r.precio || (r.bultos > 0 ? (r.monto / r.bultos) : 0);
   const usuarioNE = currentUser ? currentUser.nombre : 'Sistema';
+  const tasaBCV = r.tasa ? `Bs. ${parseFloat(r.tasa).toFixed(2)}` : '—';
+  const montoBS = (r.tasa && r.monto) ? `Bs. ${(r.monto * r.tasa).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}` : '—';
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -1385,61 +1394,73 @@ function generarNE(id) {
 <title>NE ${neNum} — NOAM</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;padding:24px;max-width:680px;margin:0 auto}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #f75f0e;padding-bottom:16px;margin-bottom:20px}
-  .brand{font-size:36px;font-weight:900;color:#f75f0e;letter-spacing:3px;line-height:1}
+  body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;padding:24px;max-width:700px;margin:0 auto}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #910146;padding-bottom:16px;margin-bottom:20px}
+  .logo-box{display:flex;align-items:center;gap:14px}
+  .logo-svg{width:56px;height:56px}
+  .brand{font-size:32px;font-weight:900;color:#910146;letter-spacing:4px;line-height:1}
   .brand-sub{font-size:10px;color:#666;margin-top:3px;letter-spacing:1px}
+  .brand-rif{font-size:10px;color:#999;margin-top:6px}
   .ne-box{text-align:right}
   .ne-label{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px}
-  .ne-num{font-size:22px;font-weight:700;color:#f75f0e}
+  .ne-num{font-size:22px;font-weight:700;color:#910146}
   .ne-fecha{font-size:12px;color:#555;margin-top:4px}
-  .section{margin-bottom:18px}
-  .section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:6px;border-bottom:1px solid #eee;padding-bottom:4px}
+  .ne-vcto{font-size:12px;color:#910146;font-weight:600;margin-top:2px}
+  .section{margin-bottom:16px}
+  .section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#910146;margin-bottom:6px;border-bottom:1px solid #f0e0e8;padding-bottom:4px}
   .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .info-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
   .info-item label{font-size:10px;color:#999;display:block}
   .info-item span{font-size:13px;font-weight:600;color:#1a1a1a}
-  table{width:100%;border-collapse:collapse;margin-bottom:16px}
-  th{background:#f75f0e;color:#fff;padding:8px 10px;text-align:left;font-size:11px;font-weight:600}
-  td{padding:9px 10px;border-bottom:1px solid #f0ede8;font-size:13px}
+  table{width:100%;border-collapse:collapse;margin-bottom:12px}
+  th{background:#910146;color:#fff;padding:8px 10px;text-align:left;font-size:11px;font-weight:600}
+  td{padding:9px 10px;border-bottom:1px solid #f0e0e8;font-size:13px}
   tr:last-child td{border-bottom:none}
-  tr:nth-child(even) td{background:#fafaf8}
-  .totals{margin-left:auto;width:280px}
+  tr:nth-child(even) td{background:#fdf8fa}
+  .totals{margin-left:auto;width:300px}
   .total-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}
-  .total-row.main{border-top:2px solid #f75f0e;margin-top:6px;padding-top:10px;font-size:16px;font-weight:700;color:#f75f0e}
-  .iva-note{font-size:10px;color:#999;text-align:right;margin-top:4px}
+  .total-row.main{border-top:2px solid #910146;margin-top:6px;padding-top:10px;font-size:16px;font-weight:700;color:#910146}
+  .tasa-box{background:#fdf8fa;border:1px solid #f0e0e8;border-radius:6px;padding:8px 12px;margin-top:8px;font-size:11px;color:#555}
+  .nota-box{background:#fff8e1;border-left:3px solid #910146;padding:10px 14px;border-radius:0 6px 6px 0;font-size:12px;color:#555;margin-top:12px;font-style:italic}
   .firmas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px}
   .firma-line{border-top:1px solid #999;padding-top:6px;font-size:11px;color:#555;text-align:center}
-  .footer{margin-top:30px;padding-top:12px;border-top:1px solid #eee;text-align:center;font-size:10px;color:#aaa}
-  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:#fff3ee;color:#f75f0e;border:1px solid #f75f0e}
-  @media print{
-    body{padding:12px}
-    button{display:none!important}
-    @page{margin:1.5cm}
-  }
+  .footer{margin-top:24px;padding-top:10px;border-top:1px solid #eee;text-align:center;font-size:10px;color:#aaa}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:#f8edf2;color:#910146;border:1px solid #910146}
+  @media print{body{padding:12px}button{display:none!important}@page{margin:1.5cm}}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div>
-    <div class="brand">NOAM</div>
-    <div class="brand-sub">Fábrica de Servilletas</div>
-    <div style="font-size:10px;color:#999;margin-top:8px">RIF: J-40242424-8</div>
-    <div style="font-size:10px;color:#999">Gran Caracas, Venezuela</div>
+  <div class="logo-box">
+    <svg class="logo-svg" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+      <rect width="56" height="56" rx="10" fill="#910146"/>
+      <text x="28" y="38" font-family="Arial" font-weight="900" font-size="22" fill="white" text-anchor="middle" letter-spacing="1">NOAM</text>
+    </svg>
+    <div>
+      <div class="brand">NOAM</div>
+      <div class="brand-sub">Fábrica de Servilletas</div>
+      <div class="brand-rif">RIF: J-40242424-8 · Gran Caracas, Venezuela</div>
+    </div>
   </div>
   <div class="ne-box">
     <div class="ne-label">Nota de Entrega</div>
     <div class="ne-num">${neNum}</div>
-    <div class="ne-fecha">Fecha: ${r.fecha}</div>
+    <div class="ne-fecha">Emisión: ${r.fecha}</div>
+    ${r.fvcto ? `<div class="ne-vcto">Vence: ${r.fvcto}</div>` : ''}
     <div style="margin-top:8px"><span class="badge">${r.condicion}</span></div>
   </div>
 </div>
 
 <div class="section">
   <div class="section-title">Datos del cliente</div>
-  <div class="info-grid">
+  <div class="info-grid-3">
     <div class="info-item"><label>Cliente</label><span>${r.cliente || '—'}</span></div>
+    <div class="info-item"><label>RIF</label><span>${r.rif || '—'}</span></div>
     <div class="info-item"><label>Vendedor</label><span>${r.vendedor || '—'}</span></div>
+  </div>
+  ${r.dirEntrega ? `<div style="margin-top:8px"><div class="info-item"><label>Dirección de entrega</label><span>${r.dirEntrega}</span></div></div>` : ''}
+  <div class="info-grid" style="margin-top:8px">
     <div class="info-item"><label>Condición de pago</label><span>${r.condicion}</span></div>
     <div class="info-item"><label>Elaborado por</label><span>${usuarioNE}</span></div>
   </div>
@@ -1459,13 +1480,20 @@ function generarNE(id) {
       </tr>
     </tbody>
   </table>
-  ${r.obs ? `<div style="font-size:11px;color:#666;background:#fafaf8;padding:8px 10px;border-radius:6px;border-left:3px solid #f75f0e"><strong>Observaciones:</strong> ${r.obs}</div>` : ''}
+  ${r.obs ? `<div style="font-size:11px;color:#666;background:#fdf8fa;padding:8px 10px;border-radius:6px;border-left:3px solid #910146;margin-bottom:10px"><strong>Observaciones:</strong> ${r.obs}</div>` : ''}
 </div>
 
 <div class="totals">
   <div class="total-row"><span>Subtotal</span><span>${fmt$(r.monto)}</span></div>
   <div class="total-row main"><span>TOTAL USD</span><span>${fmt$(r.monto)}</span></div>
-  <div class="iva-note">* Precios no incluyen IVA (16%)<br>* Pagadero a tasa BCV del día de pago</div>
+  <div class="tasa-box">
+    <strong>Tasa BCV:</strong> ${tasaBCV} &nbsp;·&nbsp; <strong>Equivalente Bs.:</strong> ${montoBS}<br>
+    <span style="font-size:10px;color:#999">* Precios no incluyen IVA (16%) · Pagadero a tasa BCV del día de pago</span>
+  </div>
+</div>
+
+<div class="nota-box">
+  📌 Esta Nota de Entrega se facturará al vencimiento de la misma.
 </div>
 
 <div class="firmas">
@@ -1480,7 +1508,7 @@ function generarNE(id) {
 
 <br>
 <div style="text-align:center">
-  <button onclick="window.print()" style="padding:10px 28px;background:#f75f0e;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-right:8px">🖨️ Imprimir / Guardar PDF</button>
+  <button onclick="window.print()" style="padding:10px 28px;background:#910146;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-right:8px">🖨️ Imprimir / Guardar PDF</button>
   <button onclick="window.close()" style="padding:10px 20px;background:#f0ede8;color:#555;border:none;border-radius:8px;font-size:14px;cursor:pointer">Cerrar</button>
 </div>
 
