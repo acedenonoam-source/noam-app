@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOAM — Sistema de Gestión</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --brand: #f75f0e;
+  --brand-dark: #c44a08;
+  --brand-light: #fff3ee;
+  --green: #679940;
+  --wine: #910146;
+  --beige: #ba9d73;
+  --bg: #f5f5f3;
+  --surface: #ffffff;
+  --border: #e0ddd8;
+  --text: #1a1a1a;
+  --text2: #666660;
+  --text3: #999994;
+  --sidebar-w: 220px;
+  --header-h: 56px;
+  --bottom-nav-h: 64px;
+  --ok: #1D9E75;
+  --warn: #BA7517;
+  --danger: #E24B4A;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ── HEADER ── */
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-h);background:var(--brand);display:flex;align-items:center;padding:0 1rem;gap:12px;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.header-logo{font-size:20px;font-weight:700;color:#fff;letter-spacing:1px}
+.header-sub{font-size:12px;color:rgba(255,255,255,.75)}
+.header-spacer{flex:1}
+.header-date{font-size:12px;color:rgba(255,255,255,.85)}
+.menu-btn{display:none;background:none;border:none;cursor:pointer;color:#fff;font-size:22px;padding:4px}
+
+/* ── SIDEBAR ── */
+.sidebar{position:fixed;top:var(--header-h);left:0;bottom:0;width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;z-index:90;transition:transform .25s}
+.nav-section{padding:12px 0 4px 16px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;color:var(--text2);font-size:14px;transition:background .15s;border-left:3px solid transparent}
+.nav-item:hover{background:var(--bg);color:var(--text)}
+.nav-item.active{background:var(--brand-light);color:var(--brand);border-left-color:var(--brand);font-weight:500}
+.nav-icon{font-size:18px;width:20px;text-align:center}
+
+/* ── MAIN ── */
+.main{margin-left:var(--sidebar-w);margin-top:var(--header-h);padding:1.5rem;min-height:calc(100vh - var(--header-h))}
+
+/* ── BOTTOM NAV (mobile) ── */
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:var(--bottom-nav-h);background:var(--surface);border-top:1px solid var(--border);z-index:100;overflow-x:auto;white-space:nowrap}
+.bottom-nav-inner{display:flex;height:100%}
+.bn-item{flex:1;min-width:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;color:var(--text3);font-size:10px;padding:4px;transition:color .15s}
+.bn-item.active{color:var(--brand)}
+.bn-icon{font-size:20px}
+
+/* ── PAGE HEADER ── */
+.page-header{margin-bottom:1.5rem}
+.page-title{font-size:20px;font-weight:600;color:var(--text)}
+.page-sub{font-size:13px;color:var(--text2);margin-top:2px}
+
+/* ── CARDS GRID ── */
+.cards{display:grid;gap:12px;margin-bottom:1.5rem}
+.cards-4{grid-template-columns:repeat(4,1fr)}
+.cards-3{grid-template-columns:repeat(3,1fr)}
+.cards-2{grid-template-columns:repeat(2,1fr)}
+.metric{background:var(--surface);border-radius:10px;padding:1rem;border:1px solid var(--border)}
+.metric-label{font-size:12px;color:var(--text2);margin-bottom:6px}
+.metric-value{font-size:24px;font-weight:600;color:var(--text)}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.metric.ok .metric-value{color:var(--ok)}
+.metric.warn .metric-value{color:var(--warn)}
+.metric.danger .metric-value{color:var(--danger)}
+
+/* ── FORM ── */
+.card{background:var(--surface);border-radius:12px;padding:1.25rem;border:1px solid var(--border);margin-bottom:1rem}
+.card-title{font-size:15px;font-weight:600;margin-bottom:1rem;color:var(--text);display:flex;align-items:center;gap:8px}
+.form-grid{display:grid;gap:12px}
+.form-grid-2{grid-template-columns:1fr 1fr}
+.form-grid-3{grid-template-columns:1fr 1fr 1fr}
+.form-grid-4{grid-template-columns:1fr 1fr 1fr 1fr}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:12px;font-weight:500;color:var(--text2)}
+.field input,.field select,.field textarea{padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--text);background:var(--surface);outline:none;transition:border .15s;font-family:inherit}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--brand)}
+.field textarea{resize:vertical;min-height:72px}
+.btn{padding:10px 20px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-primary:hover{background:var(--brand-dark)}
+.btn-secondary{background:var(--bg);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--border)}
+.btn-success{background:var(--ok);color:#fff}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-row{display:flex;gap:8px;margin-top:4px;flex-wrap:wrap}
+
+/* ── TABLE ── */
+.table-wrap{background:var(--surface);border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-bottom:1rem}
+.table-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.table-title{font-size:14px;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--bg);padding:9px 12px;text-align:left;font-weight:500;font-size:12px;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafaf8}
+.empty{text-align:center;color:var(--text3);padding:2rem;font-size:13px}
+
+/* ── BADGES ── */
+.badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.badge-ok{background:#e1f5ee;color:#0F6E56}
+.badge-warn{background:#faeeda;color:#854F0B}
+.badge-danger{background:#fcebeb;color:#A32D2D}
+.badge-info{background:#e6f1fb;color:#185FA5}
+.badge-gray{background:#f1efe8;color:#5F5E5A}
+
+/* ── ALERT ── */
+.alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;display:flex;align-items:flex-start;gap:8px}
+.alert-warn{background:#faeeda;color:#854F0B;border:1px solid #EF9F27}
+.alert-danger{background:#fcebeb;color:#A32D2D;border:1px solid #E24B4A}
+.alert-ok{background:#e1f5ee;color:#0F6E56;border:1px solid #1D9E75}
+.alert-info{background:#e6f1fb;color:#185FA5;border:1px solid #378ADD}
+
+/* ── DELETE BTN ── */
+.del-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:2px 6px;border-radius:4px}
+.del-btn:hover{color:var(--danger);background:#fcebeb}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:4px;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:0}
+.tab{padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab.active{color:var(--brand);border-bottom-color:var(--brand)}
+
+/* ── IMPUESTOS ── */
+.imp-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.imp-item:last-child{border-bottom:none}
+.imp-name{font-size:14px;font-weight:500}
+.imp-detail{font-size:12px;color:var(--text2)}
+
+/* ── RESPONSIVE TABLET ── */
+@media(max-width:1024px){
+  .cards-4{grid-template-columns:repeat(2,1fr)}
+  .form-grid-4{grid-template-columns:1fr 1fr}
+  .form-grid-3{grid-template-columns:1fr 1fr}
+}
+
+/* ── RESPONSIVE MOBILE ── */
+@media(max-width:680px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .menu-btn{display:block}
+  .main{margin-left:0;padding:1rem;margin-bottom:var(--bottom-nav-h)}
+  .bottom-nav{display:block}
+  .cards-4,.cards-3,.cards-2{grid-template-columns:1fr 1fr}
+  .form-grid-4,.form-grid-3,.form-grid-2{grid-template-columns:1fr}
+  .page-title{font-size:17px}
+  table{font-size:12px}
+  th,td{padding:7px 8px}
+  .overlay{display:block}
+}
+@media(max-width:400px){
+  .cards-4,.cards-3,.cards-2{grid-template-columns:1fr}
+}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:85}
+.overlay.open{display:block}
+
+/* ── LOGIN ── */
+.login-screen{position:fixed;inset:0;background:var(--brand);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+.login-logo{font-size:42px;font-weight:700;color:#fff;letter-spacing:3px;margin-bottom:4px}
+.login-sub{font-size:13px;color:rgba(255,255,255,.75);margin-bottom:40px}
+.login-box{background:#fff;border-radius:16px;padding:2rem;width:100%;max-width:360px;box-shadow:0 8px 40px rgba(0,0,0,.2)}
+.login-title{font-size:16px;font-weight:600;margin-bottom:1.5rem;color:var(--text);text-align:center}
+.login-users{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.5rem}
+.user-chip{padding:12px 10px;border-radius:10px;border:2px solid var(--border);cursor:pointer;text-align:center;transition:all .15s}
+.user-chip:hover{border-color:var(--brand);background:var(--brand-light)}
+.user-chip.selected{border-color:var(--brand);background:var(--brand-light)}
+.user-chip-icon{font-size:22px;margin-bottom:4px}
+.user-chip-name{font-size:13px;font-weight:500;color:var(--text)}
+.user-chip-role{font-size:10px;color:var(--text3)}
+.pin-label{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:6px;text-align:center}
+.pin-dots{display:flex;gap:10px;justify-content:center;margin-bottom:1rem}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);background:transparent;transition:all .15s}
+.pin-dot.filled{background:var(--brand);border-color:var(--brand)}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pin-key{padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--bg);font-size:18px;font-weight:500;cursor:pointer;text-align:center;transition:all .15s;color:var(--text)}
+.pin-key:hover{background:var(--brand-light);border-color:var(--brand)}
+.pin-key:active{transform:scale(.95)}
+.pin-error{color:var(--danger);font-size:12px;text-align:center;margin-bottom:8px;min-height:18px}
+.login-hidden{display:none}
+
+/* ── HEADER USER ── */
+.header-user{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);border-radius:20px;padding:4px 10px;cursor:pointer}
+.header-user-name{font-size:12px;color:#fff;font-weight:500}
+
+/* ── ADMIN PAGE ── */
+.user-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.user-row:last-child{border-bottom:none}
+.user-info{display:flex;align-items:center;gap:10px}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:var(--brand-light);display:flex;align-items:center;justify-content:center;font-size:18px}
+.user-name{font-size:14px;font-weight:500}
+.user-role{font-size:11px;color:var(--text3)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-logo">NOAM</div>
+  <div class="login-sub">Sistema de Gestión</div>
+  <div class="login-box">
+    <div id="login-step-user">
+      <div class="login-title">¿Quién eres?</div>
+      <div class="login-users" id="login-user-list"></div>
+    </div>
+    <div id="login-step-pin" class="login-hidden">
+      <div class="login-title" id="login-pin-title">Ingresa tu PIN</div>
+      <div class="pin-label">PIN de 4 dígitos</div>
+      <div class="pin-dots">
+        <div class="pin-dot" id="pd0"></div>
+        <div class="pin-dot" id="pd1"></div>
+        <div class="pin-dot" id="pd2"></div>
+        <div class="pin-dot" id="pd3"></div>
+      </div>
+      <div class="pin-error" id="pin-error"></div>
+      <div class="pin-pad">
+        <div class="pin-key" onclick="pinPress('1')">1</div>
+        <div class="pin-key" onclick="pinPress('2')">2</div>
+        <div class="pin-key" onclick="pinPress('3')">3</div>
+        <div class="pin-key" onclick="pinPress('4')">4</div>
+        <div class="pin-key" onclick="pinPress('5')">5</div>
+        <div class="pin-key" onclick="pinPress('6')">6</div>
+        <div class="pin-key" onclick="pinPress('7')">7</div>
+        <div class="pin-key" onclick="pinPress('8')">8</div>
+        <div class="pin-key" onclick="pinPress('9')">9</div>
+        <div class="pin-key" onclick="pinBack()" style="font-size:14px">← Borra</div>
+        <div class="pin-key" onclick="pinPress('0')">0</div>
+        <div class="pin-key" onclick="loginBack()" style="font-size:12px;color:var(--text3)">Volver</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY -->
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<!-- HEADER -->
+<header class="header">
+  <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+  <div class="header-logo">NOAM</div>
+  <div class="header-sub">Sistema de Gestión</div>
+  <div class="header-spacer"></div>
+  <div class="header-date" id="header-date"></div>
+  <div id="sync-indicator" style="display:none;align-items:center;gap:6px;background:rgba(255,255,255,.15);border-radius:20px;padding:4px 10px">
+    <div style="width:8px;height:8px;border-radius:50%;background:#fff;animation:pulse 1s infinite"></div>
+    <span style="font-size:11px;color:#fff">Sincronizando...</span>
+  </div>
+  <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}</style>
+  <div class="header-user" onclick="logout()" title="Cerrar sesión" id="header-user" style="display:none">
+    <span id="header-user-icon">👤</span>
+    <span class="header-user-name" id="header-user-name"></span>
+    <span style="color:rgba(255,255,255,.6);font-size:10px">Salir</span>
+  </div>
+</header>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="nav-section">Operaciones</div>
+  <div class="nav-item active" onclick="showPage('produccion')"><span class="nav-icon">🏭</span>Producción</div>
+  <div class="nav-item" onclick="showPage('inventario')"><span class="nav-icon">📦</span>Inventario</div>
+  <div class="nav-section">Comercial</div>
+  <div class="nav-item" onclick="showPage('ventas')"><span class="nav-icon">🧾</span>Ventas</div>
+  <div class="nav-item" onclick="showPage('cobranzas')"><span class="nav-icon">💰</span>Cobranzas</div>
+  <div class="nav-item" onclick="showPage('cxc')"><span class="nav-icon">📋</span>CxC</div>
+  <div class="nav-section">Financiero</div>
+  <div class="nav-item" onclick="showPage('cxp')"><span class="nav-icon">💳</span>CxP</div>
+  <div class="nav-item" onclick="showPage('gastos')"><span class="nav-icon">📉</span>Gastos</div>
+  <div class="nav-item" onclick="showPage('impuestos')"><span class="nav-icon">🏛️</span>Impuestos</div>
+  <div class="nav-section">Reportes</div>
+  <div class="nav-item" onclick="exportExcel()"><span class="nav-icon">⬇️</span>Exportar Excel</div>
+  <div class="nav-section">Sistema</div>
+  <div class="nav-item" id="nav-admin" style="display:none" onclick="showPage('admin')"><span class="nav-icon">⚙️</span>Usuarios</div>
+  <div class="nav-item" onclick="logout()"><span class="nav-icon">🔒</span>Cerrar sesión</div>
+</nav>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <div class="bn-item active" onclick="showPage('produccion')"><span class="bn-icon">🏭</span>Prod.</div>
+    <div class="bn-item" onclick="showPage('inventario')"><span class="bn-icon">📦</span>Inv.</div>
+    <div class="bn-item" onclick="showPage('ventas')"><span class="bn-icon">🧾</span>Ventas</div>
+    <div class="bn-item" onclick="showPage('cobranzas')"><span class="bn-icon">💰</span>Cobr.</div>
+    <div class="bn-item" onclick="showPage('cxc')"><span class="bn-icon">📋</span>CxC</div>
+    <div class="bn-item" onclick="showPage('cxp')"><span class="bn-icon">💳</span>CxP</div>
+    <div class="bn-item" onclick="showPage('gastos')"><span class="bn-icon">📉</span>Gastos</div>
+    <div class="bn-item" onclick="showPage('impuestos')"><span class="bn-icon">🏛️</span>Imp.</div>
+    <div class="bn-item" onclick="exportExcel()"><span class="bn-icon">⬇️</span>Export</div>
+    <div class="bn-item" id="bn-admin" style="display:none" onclick="showPage('admin')"><span class="bn-icon">⚙️</span>Admin</div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main" id="main">
+
+<!-- ════════════════ PRODUCCIÓN ════════════════ -->
+<div id="page-produccion">
+  <div class="page-header">
+    <div class="page-title">Producción</div>
+    <div class="page-sub">Registro diario de producción</div>
+  </div>
+  <div class="cards cards-4" id="prod-metrics"></div>
+  <div class="card">
+    <div class="card-title">📝 Nuevo registro</div>
+    <div class="form-grid form-grid-3">
+      <div class="field"><label>Fecha</label><input type="date" id="p-fecha"></div>
+      <div class="field"><label>Turno</label>
+        <select id="p-turno"><option>Mañana (6am-2pm)</option><option>Tarde (2pm-10pm)</option><option>Noche (10pm-6am)</option><option>Completo</option></select>
+      </div>
+      <div class="field"><label>Responsable</label><input type="text" id="p-resp" placeholder="Nombre"></div>
+    </div>
+    <div class="form-grid form-grid-4" style="margin-top:12px">
+      <div class="field"><label>Bultos Dispensador</label><input type="number" id="p-disp" placeholder="0" min="0"></div>
+      <div class="field"><label>Bultos Plus</label><input type="number" id="p-plus" placeholder="0" min="0"></div>
+      <div class="field"><label>Bultos MegaPack</label><input type="number" id="p-mega" placeholder="0" min="0"></div>
+      <div class="field"><label>Cajas Granel</label><input type="number" id="p-gran" placeholder="0" min="0"></div>
+    </div>
+    <div class="form-grid form-grid-3" style="margin-top:12px">
+      <div class="field"><label>Bobinas consumidas</label><input type="number" id="p-bob" placeholder="0" min="0" step="0.5"></div>
+      <div class="field"><label>Desperdicio (kg)</label><input type="number" id="p-desp" placeholder="0" min="0" step="0.1"></div>
+      <div class="field"><label>Paradas (horas)</label><input type="number" id="p-paradas" placeholder="0" min="0" step="0.5"></div>
+    </div>
+    <div class="field" style="margin-top:12px"><label>Observaciones</label><textarea id="p-obs" placeholder="Novedades, fallas, eventos..."></textarea></div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-primary" onclick="saveProduccion()">Guardar registro</button>
+      <button class="btn btn-secondary" onclick="clearForm('produccion')">Limpiar</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><span class="table-title">Registros recientes</span></div>
+    <div style="overflow-x:auto"><table id="prod-table">
+      <thead><tr><th>Fecha</th><th>Turno</th><th>Dispensador</th><th>Plus</th><th>MegaPack</th><th>Granel</th><th>Bobinas</th><th>Desperdicio</th><th>Obs.</th><th></th></tr></thead>
+      <tbody id="prod-tbody"><tr><td colspan="10" class="empty">Sin registros aún</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════════════ INVENTARIO ════════════════ -->
+<div id="page-inventario" style="display:none">
+  <div class="page-header">
+    <div class="page-title">Inventario</div>
+    <div class="page-sub">Cierre de inventario por período</div>
+  </div>
+  <div class="cards cards-4" id="inv-metrics"></div>
+  <div class="card">
+    <div class="card-title">📝 Registro de cierre</div>
+    <div class="form-grid form-grid-2">
+      <div class="field"><label>Fecha de cierre</label><input type="date" id="i-fecha"></div>
+      <div class="field"><label>Período</label>
+        <select id="i-periodo"><option>Diario</option><option>Semanal</option><option>Mensual</option></select>
+      </div>
+    </div>
+    <div style="margin-top:12px;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px">Producto Terminado (bultos)</div>
+    <div class="form-grid form-grid-4">
+      <div class="field"><label>Dispensador</label><input type="number" id="i-disp" placeholder="0" min="0"></div>
+      <div class="field"><label>Plus</label><input type="number" id="i-plus" placeholder="0" min="0"></div>
+      <div class="field"><label>MegaPack</label><input type="number" id="i-mega" placeholder="0" min="0"></div>
+      <div class="field"><label>Granel (cajas)</label><input type="number" id="i-gran" placeholder="0" min="0"></div>
+    </div>
+    <div style="margin-top:12px;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:8px">Materia Prima e Insumos</div>
+    <div class="form-grid form-grid-4">
+      <div class="field"><label>Bobinas (unidades)</label><input type="number" id="i-bob" placeholder="0" min="0"></div>
+      <div class="field"><label>Bultos x fabricar</label><input type="number" id="i-bxf" placeholder="0" min="0"></div>
+      <div class="field"><label>Emp. Primarios Disp.</label><input type="number" id="i-ep1" placeholder="0" min="0"></div>
+      <div class="field"><label>Emp. Primarios Plus</label><input type="number" id="i-ep2" placeholder="0" min="0"></div>
+    </div>
+    <div class="form-grid form-grid-4" style="margin-top:12px">
+      <div class="field"><label>Emp. Primarios Mega</label><input type="number" id="i-ep3" placeholder="0" min="0"></div>
+      <div class="field"><label>Emp. Secundarios</label><input type="number" id="i-es" placeholder="0" min="0"></div>
+      <div class="field"><label>Observaciones</label><input type="text" id="i-obs" placeholder="Nota"></div>
+    </div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-primary" onclick="saveInventario()">Guardar cierre</button>
+      <button class="btn btn-secondary" onclick="clearForm('inventario')">Limpiar</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><span class="table-title">Cierres registrados</span></div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Fecha</th><th>Período</th><th>Dispensador</th><th>Plus</th><th>MegaPack</th><th>Bobinas</th><th>Bx Fab.</th><th></th></tr></thead>
+      <tbody id="inv-tbody"><tr><td colspan="8" class="empty">Sin registros aún</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════════════ VENTAS ════════════════ -->
+<div id="page-ventas" style="display:none">
+  <div class="page-header">
+    <div class="page-title">Ventas y Facturación</div>
+    <div class="page-sub">Registro de facturas, NE y despachos</div>
+  </div>
+  <div class="cards cards-4" id="ven-metrics"></div>
+  <div class="card">
+    <div class="card-title">📝 Nueva venta</div>
+    <div class="form-grid form-grid-4">
+      <div class="field"><label>Fecha</label><input type="date" id="v-fecha"></div>
+      <div class="field"><label>Tipo</label>
+        <select id="v-tipo"><option>Factura</option><option>NE</option><option>NE - Granel</option></select>
+      </div>
+      <div class="field"><label>N° Documento</label><input type="text" id="v-ndoc" placeholder="Ej: 2900"></div>
+      <div class="field"><label>Cliente</label><input type="text" id="v-cliente" placeholder="Nombre del cliente"></div>
+    </div>
+    <div class="form-grid form-grid-4" style="margin-top:12px">
+      <div class="field"><label>Producto</label>
+        <select id="v-prod"><option>Dispensador</option><option>Plus</option><option>MegaPack</option><option>Granel</option><option>Mixto</option></select>
+      </div>
+      <div class="field"><label>Bultos / Unidades</label><input type="number" id="v-bultos" placeholder="0" min="0"></div>
+      <div class="field"><label>Precio unitario ($)</label><input type="number" id="v-precio" placeholder="0.00" step="0.01"></div>
+      <div class="field"><label>Monto total ($)</label><input type="number" id="v-monto" placeholder="0.00" step="0.01"></div>
+    </div>
+    <div class="form-grid form-grid-3" style="margin-top:12px">
+      <div class="field"><label>Vendedor</label><input type="text" id="v-vendedor" placeholder="Nombre"></div>
+      <div class="field"><label>Condición</label>
+        <select id="v-condicion"><option>Contado</option><option>Crédito 7 días</option><option>Crédito 15 días</option><option>Crédito 30 días</option></select>
+      </div>
+      <div class="field"><label>Estado</label>
+        <select id="v-estado"><option>Pendiente despacho</option><option>Despachado</option><option>Cobrado</option></select>
+      </div>
+    </div>
+    <div class="field" style="margin-top:12px"><label>Observaciones</label><textarea id="v-obs" placeholder="Notas adicionales..."></textarea></div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-primary" onclick="saveVenta()">Guardar venta</button>
+      <button class="btn btn-secondary" onclick="clearForm('ventas')">Limpiar</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><span class="table-title">Ventas registradas</span></div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Fecha</th><th>Tipo</th><th>N°</th><th>Cliente</th><th>Producto</th><th>Bultos</th><th>Monto $</th><th>Condición</th><th>Estado</th><th>NE</th><th></th></tr></thead>
+      <tbody id="ven-tbody"><tr><td colspan="11" class="empty">Sin registros aún</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════════════ COBRANZAS ════════════════ -->
+<div id="page-cobranzas" style="display:none">
+  <div class="page-header">
+    <div class="page-title">Cobranzas</div>
+    <div class="page-sub">Registro de pagos recibidos</div>
+  </div>
+  <div class="cards cards-3" id="cobr-metrics"></div>
+  <div class="card">
+    <div class="card-title">📝 Nuevo cobro</div>
+    <div class="form-grid form-grid-4">
+      <div class="field"><label>Fecha</label><input type="date" id="c-fecha"></div>
+      <div class="field"><label>Banco receptor</label>
+        <select id="c-banco"><option>Banesco</option><option>Mercantil</option><option>Mercantil AC</option><option>Otro</option></select>
+      </div>
+      <div class="field"><label>Cliente</label><input type="text" id="c-cliente" placeholder="Nombre del cliente"></div>
+      <div class="field"><label>Monto ($)</label><input type="number" id="c-monto" placeholder="0.00" step="0.01"></div>
+    </div>
+    <div class="form-grid form-grid-3" style="margin-top:12px">
+      <div class="field"><label>N° Ref. / Transferencia</label><input type="text" id="c-ref" placeholder="Referencia"></div>
+      <div class="field"><label>Tasa BCV del día</label><input type="number" id="c-tasa" placeholder="0.00" step="0.01"></div>
+      <div class="field"><label>Monto en Bs (opcional)</label><input type="number" id="c-bs" placeholder="0.00" step="0.01"></div>
+    </div>
+    <div class="field" style="margin-top:12px"><label>Observaciones</label><textarea id="c-obs" placeholder="Notas..."></textarea></div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-primary" onclick="saveCobranza()">Guardar cobro</button>
+      <button class="btn btn-secondary" onclick="clearForm('cobranzas')">Limpiar</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><span class="table-title">Cobros registrados</span></div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Fecha</th><th>Banco</th><th>Cliente</th><th>Monto $</th><th>Tasa BCV</th><th>Referencia</th><th></th></tr></thead>
+      <tbody id="cobr-tbody"><tr><td colspan="7" class="empty">Sin registros aún</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════════════ CXC ════════════════ -->
+<div id="page-cxc" style="display:none">
+  <div class="page-header">
+    <div class="page-title">Cuentas por Cobrar</div>
+    <div class="page-sub">Cartera de clientes y antigüedad</div>
+  </div>
+  <div class="cards cards-4" id="cxc-metrics"></div>
+  <div class="card">
+    <div class="card-title">📝 Registrar cuenta por cobrar</div>
+    <div class="form-grid form-grid-4">
+      <div class="field"><label>Fecha emisión</label><input type="date" id="cxc-femision"></div>
+      <div class="field"><label>Fecha vencimiento</label><input type="date" id="cxc-fvcto"></div>
+      <div class="field"><label>Cliente</label><input type="text" id="cxc-cliente" placeholder="Nombre"></div>
+      <div class="field"><label>N° Documento</label><input type="text" id="cxc-ndoc" placeholder="Fact/NE"></div>
+    </div>
+    <div class="form-grid form-grid-3" style="margin-top:12px">
+      <div class="field"><label>Monto ($)</label><input type="number" id="cxc-monto" placeholder="0.00" step="0.01"></div>
+      <div class="field"><label>Estado</label>
+        <select id="cxc-estado"><option>Por vencer</option><option>0-7 días</option><option>8-15 días</option><option>16-30 días</option><option>+30 días</option><option>Cobrado</option></select>
+      </div>
+      <div class="field"><label>Vendedor</label><input type="text" id="cxc-vendedor" placeholder="Nombre"></div>
+    </div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-primary" onclick="saveCxc()">Guardar</button>
+      <button class="btn btn-secondary" onclick="clearForm('cxc')">Limpiar</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><span class="table-title">Cartera activa</span></div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Emisión</th><th>Vcto.</th><th>Cliente</th><th>Doc.</th><th>Monto $</th><th>Estado</th><th>Vendedor</th><th></th></tr></thead>
+      <tbody id="cxc-tbody"><tr><td colspan="8" class="empty">Sin registros aún</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════════════ CXP ════════════════ -->
+<div id="page-cxp" style="display:none">
+  <div class="page-header">
+    <div class="page-title">Cuentas por Pagar</div>
+    <div class="page-sub">Proveedores, nómina, impuestos y comisiones</div>
+  </div>
+  <div class="cards cards-3" id="cxp-metrics"></div>
+  <div class="card">
+    <div class="card-title">📝 Registrar cuenta por pagar</div>
+    <div class="form-grid form-grid-4">
+      <div class="field"><label>Fecha</label><input type="date" id="cxp-fecha"></div>
+      <div class="field"><label>Categoría</label>
+        <select id="cxp-cat"><option>Proveedores</option><option>Nómina</option><option>Entes Gubernamentales</option><option>Comisiones</option><option>PickUp / Flete</option><option>Otro</option></select>
+      </div>
+      <div class="field"><label>Beneficiario</label><input type="text" id="cxp-benef" placeholder="Nombre"></div>
+      <div class="field"><label>Concepto</label><input type="text" id="cxp-concepto" placeholder="Descripción"></div>
+    </div>
+    <div class="form-grid form-grid-3" style="margin-top:12px">
+      <div class="field"><label>Monto ($)</label><input type="number" id="cxp-monto" placeholder="0.00" step="0.01"></div>
+      <div class="field"><label>Fecha vencimiento</label><input type="date" id="cxp-fvcto"></div>
+      <div class="field"><label>Estado</label>
+        <select id="cxp-estado"><option>Pendiente</option><option>Pagado</option><option>Parcial</option></select>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-primary" onclick="saveCxp()">Guardar</button>
+      <button class="btn btn-secondary" onclick="clearForm('cxp')">Limpiar</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><span class="table-title">Compromisos registrados</span></div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Fecha</th><th>Categoría</th><th>Beneficiario</th><th>Concepto</th><th>Monto $</th><th>Vcto.</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="cxp-tbody"><tr><td colspan="8" class="empty">Sin registros aún</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════════════ GASTOS ════════════════ -->
+<div id="page-gastos" style="display:none">
+  <div class="page-header">
+    <div class="page-title">Gastos</div>
+    <div class="page-sub">Registro de todos los egresos</div>
+  </div>
+  <div class="cards cards-3" id="gas-metrics"></div>
+  <div class="card">
+    <div class="card-title">📝 Registrar gasto</div>
+    <div class="form-grid form-grid-4">
+      <div class="field"><label>Fecha</label><input type="date" id="g-fecha"></div>
+      <div class="field"><label>Categoría</label>
+        <select id="g-cat">
+          <option>Alquiler</option><option>Nómina</option><option>Comisiones</option>
+          <option>Impuestos</option><option>Servicios</option><option>Mantenimiento</option>
+          <option>Insumos</option><option>Transporte/Flete</option><option>Materiales de oficina</option>
+          <option>Publicidad</option><option>Otro</option>
+        </select>
+      </div>
+      <div class="field"><label>Proveedor / A quien</label><input type="text" id="g-prov" placeholder="Nombre"></div>
+      <div class="field"><label>Monto ($)</label><input type="number" id="g-monto" placeholder="0.00" step="0.01"></div>
+    </div>
+    <div class="form-grid form-grid-3" style="margin-top:12px">
+      <div class="field"><label>Concepto detallado</label><input type="text" id="g-concepto" placeholder="Descripción"></div>
+      <div class="field"><label>N° Factura / Recibo</label><input type="text" id="g-ndoc" placeholder="Opcional"></div>
+      <div class="field"><label>Forma de pago</label>
+        <select id="g-forma"><option>Transferencia</option><option>Efectivo $</option><option>Efectivo Bs</option><option>Débito</option></select>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-primary" onclick="saveGasto()">Guardar gasto</button>
+      <button class="btn btn-secondary" onclick="clearForm('gastos')">Limpiar</button>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header"><span class="table-title">Gastos registrados</span></div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Fecha</th><th>Categoría</th><th>Proveedor</th><th>Concepto</th><th>Monto $</th><th>Forma pago</th><th></th></tr></thead>
+      <tbody id="gas-tbody"><tr><td colspan="7" class="empty">Sin registros aún</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ════════════════ IMPUESTOS ════════════════ -->
+<div id="page-impuestos" style="display:none">
+  <div class="page-header">
+    <div class="page-title">Impuestos</div>
+    <div class="page-sub">Proyección de vencimientos y pagos reales</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showImpTab('proyeccion',this)">Proyección (vencimientos)</button>
+    <button class="tab" onclick="showImpTab('pagos',this)">Pagos realizados</button>
+  </div>
+
+  <!-- PROYECCION -->
+  <div id="imp-tab-proyeccion">
+    <div class="card">
+      <div class="card-title">📅 Agregar vencimiento</div>
+      <div class="form-grid form-grid-4">
+        <div class="field"><label>Impuesto</label>
+          <select id="ip-nombre">
+            <option>Alcaldía Plaza</option><option>SENIAT - ISLR</option><option>SENIAT - Anticipo ISLR</option>
+            <option>IVA Mensual</option><option>Retenciones IVA</option><option>IVSS</option>
+            <option>FAOV</option><option>INCES</option><option>Impuesto PPP</option>
+            <option>IMAE</option><option>Bomberos</option><option>Otro</option>
+          </select>
+        </div>
+        <div class="field"><label>Período</label><input type="text" id="ip-periodo" placeholder="Ej: Jun 2026"></div>
+        <div class="field"><label>Fecha vencimiento</label><input type="date" id="ip-fvcto"></div>
+        <div class="field"><label>Monto estimado ($)</label><input type="number" id="ip-monto" placeholder="0.00" step="0.01"></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label>Observaciones</label><input type="text" id="ip-obs" placeholder="Notas"></div>
+      <div class="btn-row" style="margin-top:12px">
+        <button class="btn btn-primary" onclick="saveImpProyeccion()">Agregar vencimiento</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header"><span class="table-title">Vencimientos próximos</span></div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>Impuesto</th><th>Período</th><th>Vencimiento</th><th>Monto est. $</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="imp-proy-tbody"><tr><td colspan="6" class="empty">Sin vencimientos registrados</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- PAGOS -->
+  <div id="imp-tab-pagos" style="display:none">
+    <div class="card">
+      <div class="card-title">💳 Registrar pago de impuesto</div>
+      <div class="form-grid form-grid-4">
+        <div class="field"><label>Impuesto</label>
+          <select id="ir-nombre">
+            <option>Alcaldía Plaza</option><option>SENIAT - ISLR</option><option>SENIAT - Anticipo ISLR</option>
+            <option>IVA Mensual</option><option>Retenciones IVA</option><option>IVSS</option>
+            <option>FAOV</option><option>INCES</option><option>Impuesto PPP</option>
+            <option>IMAE</option><option>Bomberos</option><option>Otro</option>
+          </select>
+        </div>
+        <div class="field"><label>Período pagado</label><input type="text" id="ir-periodo" placeholder="Ej: Jun 2026"></div>
+        <div class="field"><label>Fecha de pago</label><input type="date" id="ir-fpago"></div>
+        <div class="field"><label>Monto pagado ($)</label><input type="number" id="ir-monto" placeholder="0.00" step="0.01"></div>
+      </div>
+      <div class="form-grid form-grid-2" style="margin-top:12px">
+        <div class="field"><label>N° Comprobante</label><input type="text" id="ir-comp" placeholder="Referencia"></div>
+        <div class="field"><label>Observaciones</label><input type="text" id="ir-obs" placeholder="Notas"></div>
+      </div>
+      <div class="btn-row" style="margin-top:12px">
+        <button class="btn btn-primary" onclick="saveImpPago()">Registrar pago</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header"><span class="table-title">Pagos realizados</span></div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>Impuesto</th><th>Período</th><th>Fecha pago</th><th>Monto $</th><th>Comprobante</th><th></th></tr></thead>
+        <tbody id="imp-pagos-tbody"><tr><td colspan="6" class="empty">Sin pagos registrados</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ ADMIN ════════════════ -->
+<div id="page-admin" style="display:none">
+  <div class="page-header">
+    <div class="page-title">⚙️ Gestión de Usuarios</div>
+    <div class="page-sub">Solo visible para el administrador</div>
+  </div>
+  <div class="card">
+    <div class="card-title">➕ Crear usuario</div>
+    <div class="form-grid form-grid-3">
+      <div class="field"><label>Nombre</label><input type="text" id="au-nombre" placeholder="Ej: María García"></div>
+      <div class="field"><label>Rol</label>
+        <select id="au-rol">
+          <option>Producción</option><option>Ventas</option><option>Administración</option>
+          <option>Gerente</option><option>Admin</option>
+        </select>
+      </div>
+      <div class="field"><label>PIN (4 dígitos)</label><input type="password" id="au-pin" placeholder="••••" maxlength="4" inputmode="numeric"></div>
+    </div>
+    <div class="field" style="margin-top:12px"><label>Ícono</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px" id="au-icons">
+        <span style="cursor:pointer;font-size:22px" onclick="selectIcon(this,'👤')">👤</span>
+        <span style="cursor:pointer;font-size:22px" onclick="selectIcon(this,'👩')">👩</span>
+        <span style="cursor:pointer;font-size:22px" onclick="selectIcon(this,'👨')">👨</span>
+        <span style="cursor:pointer;font-size:22px" onclick="selectIcon(this,'👷')">👷</span>
+        <span style="cursor:pointer;font-size:22px" onclick="selectIcon(this,'👩‍💼')">👩‍💼</span>
+        <span style="cursor:pointer;font-size:22px" onclick="selectIcon(this,'👨‍💼')">👨‍💼</span>
+        <span style="cursor:pointer;font-size:22px" onclick="selectIcon(this,'🧑‍🏭')">🧑‍🏭</span>
+        <span style="cursor:pointer;font-size:22px" onclick="selectIcon(this,'🧑‍💻')">🧑‍💻</span>
+      </div>
+      <input type="hidden" id="au-icon" value="👤">
+    </div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn btn-primary" onclick="createUser()">Crear usuario</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">👥 Usuarios registrados</div>
+    <div id="user-list"></div>
+  </div>
+  <div class="card" style="border-color:var(--danger)" id="danger-zone">
+    <div class="card-title" style="color:var(--danger)">⚠️ Zona peligrosa</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Estas acciones no se pueden deshacer.</p>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="if(confirm('¿Borrar TODOS los datos de la app?'))clearAllData()">Borrar todos los datos</button>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ── AUTH ──
+let currentUser = null;
+let pinBuffer = '';
+let loginTargetUser = null;
+
+const DEFAULT_USERS = [
+  {id:'admin', nombre:'Administrador', rol:'Admin', icon:'👨‍💼', pin:'1234', active:true},
+];
+
+function getUsers() {
+  const u = localStorage.getItem('noam_users');
+  return u ? JSON.parse(u) : [...DEFAULT_USERS];
+}
+function saveUsers(users) { localStorage.setItem('noam_users', JSON.stringify(users)); }
+
+function renderLoginUsers() {
+  const users = getUsers().filter(u => u.active);
+  const el = document.getElementById('login-user-list');
+  el.innerHTML = users.map(u => `
+    <div class="user-chip" onclick="selectLoginUser('${u.id}')">
+      <div class="user-chip-icon">${u.icon}</div>
+      <div class="user-chip-name">${u.nombre}</div>
+      <div class="user-chip-role">${u.rol}</div>
+    </div>`).join('');
+}
+
+function selectLoginUser(id) {
+  const users = getUsers();
+  loginTargetUser = users.find(u => u.id === id);
+  if (!loginTargetUser) return;
+  document.getElementById('login-step-user').style.display = 'none';
+  document.getElementById('login-step-pin').classList.remove('login-hidden');
+  document.getElementById('login-pin-title').textContent = `Hola, ${loginTargetUser.nombre.split(' ')[0]} 👋`;
+  pinBuffer = '';
+  updatePinDots();
+  document.getElementById('pin-error').textContent = '';
+}
+
+function loginBack() {
+  document.getElementById('login-step-user').style.display = '';
+  document.getElementById('login-step-pin').classList.add('login-hidden');
+  pinBuffer = '';
+  loginTargetUser = null;
+}
+
+function pinPress(d) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += d;
+  updatePinDots();
+  if (pinBuffer.length === 4) setTimeout(checkPin, 150);
+}
+
+function pinBack() {
+  pinBuffer = pinBuffer.slice(0, -1);
+  updatePinDots();
+  document.getElementById('pin-error').textContent = '';
+}
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('pd' + i).classList.toggle('filled', i < pinBuffer.length);
+  }
+}
+
+function checkPin() {
+  if (pinBuffer === loginTargetUser.pin) {
+    currentUser = loginTargetUser;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('header-user').style.display = 'flex';
+    document.getElementById('header-user-name').textContent = currentUser.nombre.split(' ')[0];
+    document.getElementById('header-user-icon').textContent = currentUser.icon;
+    if (currentUser.rol === 'Admin') {
+      document.getElementById('nav-admin').style.display = 'flex';
+      document.getElementById('bn-admin').style.display = 'flex';
+    }
+    pinBuffer = '';
+    loadFromSheets(); // carga datos frescos de Google Sheets al entrar
+  } else {
+    document.getElementById('pin-error').textContent = 'PIN incorrecto, intenta de nuevo';
+    pinBuffer = '';
+    updatePinDots();
+  }
+}
+
+function logout() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  currentUser = null;
+  loginTargetUser = null;
+  pinBuffer = '';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('header-user').style.display = 'none';
+  document.getElementById('nav-admin').style.display = 'none';
+  document.getElementById('bn-admin').style.display = 'none';
+  document.getElementById('login-step-user').style.display = '';
+  document.getElementById('login-step-pin').classList.add('login-hidden');
+  renderLoginUsers();
+}
+
+// ── USER MANAGEMENT ──
+let selectedIcon = '👤';
+function selectIcon(el, icon) {
+  selectedIcon = icon;
+  document.getElementById('au-icon').value = icon;
+  document.querySelectorAll('#au-icons span').forEach(s => s.style.outline = 'none');
+  el.style.outline = '2px solid var(--brand)';
+  el.style.borderRadius = '4px';
+}
+
+function createUser() {
+  const nombre = document.getElementById('au-nombre').value.trim();
+  const rol = document.getElementById('au-rol').value;
+  const pin = document.getElementById('au-pin').value.trim();
+  const icon = document.getElementById('au-icon').value || '👤';
+  if (!nombre) { alert('Escribe el nombre'); return; }
+  if (!/^\d{4}$/.test(pin)) { alert('El PIN debe ser exactamente 4 números'); return; }
+  const users = getUsers();
+  const id = 'u_' + Date.now();
+  users.push({ id, nombre, rol, icon, pin, active: true });
+  saveUsers(users);
+  renderUserList();
+  renderLoginUsers();
+  document.getElementById('au-nombre').value = '';
+  document.getElementById('au-pin').value = '';
+  alert(`Usuario "${nombre}" creado ✓`);
+}
+
+function renderUserList() {
+  const users = getUsers();
+  const el = document.getElementById('user-list');
+  if (!el) return;
+  if (!users.length) { el.innerHTML = '<p style="color:var(--text3);font-size:13px">Sin usuarios</p>'; return; }
+  el.innerHTML = users.map(u => `
+    <div class="user-row">
+      <div class="user-info">
+        <div class="user-avatar">${u.icon}</div>
+        <div>
+          <div class="user-name">${u.nombre}</div>
+          <div class="user-role">${u.rol} · PIN: ${'•'.repeat(u.pin.length)}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span class="badge ${u.active ? 'badge-ok' : 'badge-gray'}">${u.active ? 'Activo' : 'Inactivo'}</span>
+        <button class="btn btn-sm btn-secondary" onclick="resetPin('${u.id}')">Cambiar PIN</button>
+        ${u.id !== 'admin' ? `
+          <button class="del-btn" onclick="toggleUser('${u.id}')">${u.active ? '🔒' : '🔓'}</button>
+          <button class="del-btn" onclick="deleteUser('${u.id}')">✕</button>
+        ` : ''}
+      </div>
+    </div>`).join('');
+}
+
+function toggleUser(id) {
+  const users = getUsers();
+  const u = users.find(x => x.id === id);
+  if (u) u.active = !u.active;
+  saveUsers(users);
+  renderUserList();
+  renderLoginUsers();
+}
+
+function deleteUser(id) {
+  if (!confirm('¿Eliminar este usuario?')) return;
+  const users = getUsers().filter(x => x.id !== id);
+  saveUsers(users);
+  renderUserList();
+  renderLoginUsers();
+}
+
+function resetPin(id) {
+  const nuevoPin = prompt('Nuevo PIN (4 dígitos):');
+  if (!nuevoPin || !/^\d{4}$/.test(nuevoPin)) { alert('PIN inválido — debe ser 4 números'); return; }
+  const users = getUsers();
+  const u = users.find(x => x.id === id);
+  if (u) u.pin = nuevoPin;
+  saveUsers(users);
+  renderUserList();
+  alert('PIN actualizado ✓');
+}
+
+function clearAllData() {
+  localStorage.removeItem('noam_db');
+  location.reload();
+}
+
+// ── GOOGLE SHEETS CONFIG ──
+const SHEET_ID = '1mSUSSUyEtqmlJ3KruaI-oUgmlrqE6D9dl3gBlOTfDeg';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxw1zG7AUjtQ9WR_2007ZAU_3oDOFjFYPgN6s3HgYkogzdLYWKX-qQizHQhqlGZedtybg/exec';
+
+const SCHEMAS = {
+  produccion: ['id','fecha','turno','responsable','dispensador','plus','megapack','granel','bobinas','desperdicio','paradas','obs'],
+  inventario: ['id','fecha','periodo','dispensador','plus','megapack','granel','bobinas','bxfab','ep1','ep2','ep3','es','obs'],
+  ventas: ['id','fecha','tipo','ndoc','cliente','producto','bultos','precio','monto','vendedor','condicion','estado','obs'],
+  cobranzas: ['id','fecha','banco','cliente','monto','ref','tasa','bs','obs'],
+  cxc: ['id','femision','fvcto','cliente','ndoc','monto','estado','vendedor'],
+  cxp: ['id','fecha','categoria','beneficiario','concepto','monto','fvcto','estado'],
+  gastos: ['id','fecha','categoria','proveedor','concepto','monto','ndoc','forma'],
+  impProy: ['id','nombre','periodo','fvcto','monto','obs','estado'],
+  impPagos: ['id','nombre','periodo','fpago','monto','comp','obs']
+};
+
+const NUMS = ['dispensador','plus','megapack','granel','bobinas','desperdicio','paradas','bxfab','ep1','ep2','ep3','es','bultos','precio','monto','tasa','bs'];
+
+function setSyncStatus(on) {
+  const el = document.getElementById('sync-indicator');
+  if (el) el.style.display = on ? 'flex' : 'none';
+}
+
+async function syncModule(module) {
+  const schema = SCHEMAS[module];
+  if (!schema) return;
+  const rows = [schema, ...DB[module].map(r => schema.map(k => r[k] ?? ''))];
+  try {
+    setSyncStatus(true);
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ sheetId: SHEET_ID, module, action: 'sync', rows }),
+      headers: { 'Content-Type': 'text/plain' }
+    });
+  } catch(err) { console.error('Sync error:', err); }
+  finally { setSyncStatus(false); }
+}
+
+async function loadFromSheets() {
+  setSyncStatus(true);
+  for (const mod of Object.keys(SCHEMAS)) {
+    try {
+      const res = await fetch(`${SCRIPT_URL}?sheetId=${SHEET_ID}&module=${mod}`);
+      const json = await res.json();
+      if (json.rows && json.rows.length > 1) {
+        const headers = json.rows[0];
+        DB[mod] = json.rows.slice(1).map(row => {
+          const obj = {};
+          headers.forEach((h, i) => { obj[h] = row[i]; });
+          NUMS.forEach(k => { if (obj[k] !== undefined && obj[k] !== '') obj[k] = parseFloat(obj[k]) || 0; });
+          return obj;
+        });
+      }
+    } catch(err) { console.error('Load error:', mod, err); }
+  }
+  setSyncStatus(false);
+  save();
+  renderProduccion(); renderInventario(); renderVentas(); renderCobranzas();
+  renderCxc(); renderCxp(); renderGastos(); renderImpProy(); renderImpPagos();
+  ['produccion','inventario','ventas','cobranzas','cxc','cxp','gastos'].forEach(p => refreshMetrics(p));
+}
+
+// ── DATA STORE ──
+const DB = {
+  produccion: [], inventario: [], ventas: [], cobranzas: [],
+  cxc: [], cxp: [], gastos: [], impProy: [], impPagos: []
+};
+
+function save() { localStorage.setItem('noam_db', JSON.stringify(DB)); }
+function load() {
+  const d = localStorage.getItem('noam_db');
+  if (d) { const p = JSON.parse(d); Object.keys(p).forEach(k => { if(DB[k]) DB[k] = p[k]; }); }
+}
+
+// ── UTILS ──
+const $ = id => document.getElementById(id);
+const val = id => $( id) ? $( id).value : '';
+const num = id => parseFloat($(id)?.value) || 0;
+const fmt$ = n => '$' + (parseFloat(n)||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+const fmtN = n => (parseInt(n)||0).toLocaleString();
+const today = () => new Date().toISOString().split('T')[0];
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+const isAdmin = () => currentUser && currentUser.id === 'admin';
+const delBtn = (arr, id, cb) => isAdmin() ? `<button class="del-btn" onclick="del(${arr},'${id}');${cb}">✕</button>` : '';
+
+function badgeState(s) {
+  const map = {
+    'Por vencer':'badge-ok','0-7 días':'badge-ok','8-15 días':'badge-warn',
+    '16-30 días':'badge-warn','+30 días':'badge-danger','Cobrado':'badge-gray',
+    'Pendiente':'badge-warn','Pagado':'badge-ok','Parcial':'badge-warn',
+    'Pendiente despacho':'badge-warn','Despachado':'badge-info','Vencido':'badge-danger'
+  };
+  return `<span class="badge ${map[s]||'badge-gray'}">${s}</span>`;
+}
+
+// ── NAVIGATION ──
+const pages = ['produccion','inventario','ventas','cobranzas','cxc','cxp','gastos','impuestos','admin'];
+function showPage(name) {
+  pages.forEach(p => { $('page-'+p).style.display = p===name?'':'none'; });
+  document.querySelectorAll('.nav-item').forEach((el,i) => el.classList.remove('active'));
+  document.querySelectorAll('.bn-item').forEach(el => el.classList.remove('active'));
+  const navItems = document.querySelectorAll('.nav-item');
+  const bnItems = document.querySelectorAll('.bn-item');
+  if(name==='admin'){
+    renderUserList();
+    const dz = document.getElementById('danger-zone');
+    if(dz) dz.style.display = currentUser && currentUser.id==='admin' ? '' : 'none';
+  }
+  const pageMap = {produccion:0,inventario:1,ventas:2,cobranzas:3,cxc:4,cxp:5,gastos:6,impuestos:7};
+  if(navItems[pageMap[name]]) navItems[pageMap[name]].classList.add('active');
+  if(bnItems[pageMap[name]]) bnItems[pageMap[name]].classList.add('active');
+  closeSidebar();
+  refreshMetrics(name);
+}
+
+function toggleSidebar() {
+  $('sidebar').classList.toggle('open');
+  $('overlay').classList.toggle('open');
+}
+function closeSidebar() {
+  $('sidebar').classList.remove('open');
+  $('overlay').classList.remove('open');
+}
+
+function showImpTab(tab, btn) {
+  $('imp-tab-proyeccion').style.display = tab==='proyeccion'?'':'none';
+  $('imp-tab-pagos').style.display = tab==='pagos'?'':'none';
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── SET DEFAULTS ──
+function setDefaults() {
+  const t = today();
+  ['p-fecha','i-fecha','v-fecha','c-fecha','cxp-fecha','g-fecha','ip-fvcto','ir-fpago'].forEach(id => { if($(id)) $(id).value = t; });
+}
+
+// ── CLEAR FORM ──
+function clearForm(mod) {
+  const ids = {
+    produccion:['p-resp','p-disp','p-plus','p-mega','p-gran','p-bob','p-desp','p-paradas','p-obs'],
+    inventario:['i-disp','i-plus','i-mega','i-gran','i-bob','i-bxf','i-ep1','i-ep2','i-ep3','i-es','i-obs'],
+    ventas:['v-ndoc','v-cliente','v-bultos','v-precio','v-monto','v-vendedor','v-obs'],
+    cobranzas:['c-cliente','c-monto','c-ref','c-tasa','c-bs','c-obs'],
+    cxc:['cxc-cliente','cxc-ndoc','cxc-monto','cxc-vendedor'],
+    cxp:['cxp-benef','cxp-concepto','cxp-monto'],
+    gastos:['g-prov','g-monto','g-concepto','g-ndoc']
+  };
+  (ids[mod]||[]).forEach(id => { if($(id)) $(id).value = ''; });
+}
+
+// ── SAVE FUNCTIONS ──
+function saveProduccion() {
+  const r = {
+    id:uid(), fecha:val('p-fecha'), turno:val('p-turno'), responsable:val('p-resp'),
+    dispensador:num('p-disp'), plus:num('p-plus'), megapack:num('p-mega'), granel:num('p-gran'),
+    bobinas:num('p-bob'), desperdicio:num('p-desp'), paradas:num('p-paradas'), obs:val('p-obs')
+  };
+  DB.produccion.unshift(r); save(); renderProduccion(); refreshMetrics('produccion');
+  syncModule('produccion'); clearForm('produccion'); alert('Registro guardado ✓');
+}
+
+function saveInventario() {
+  const r = {
+    id:uid(), fecha:val('i-fecha'), periodo:val('i-periodo'),
+    dispensador:num('i-disp'), plus:num('i-plus'), megapack:num('i-mega'), granel:num('i-gran'),
+    bobinas:num('i-bob'), bxfab:num('i-bxf'), ep1:num('i-ep1'), ep2:num('i-ep2'), ep3:num('i-ep3'), es:num('i-es'), obs:val('i-obs')
+  };
+  DB.inventario.unshift(r); save(); renderInventario(); refreshMetrics('inventario');
+  syncModule('inventario'); clearForm('inventario'); alert('Cierre de inventario guardado ✓');
+}
+
+function saveVenta() {
+  const r = {
+    id:uid(), fecha:val('v-fecha'), tipo:val('v-tipo'), ndoc:val('v-ndoc'), cliente:val('v-cliente'),
+    producto:val('v-prod'), bultos:num('v-bultos'), precio:num('v-precio'), monto:num('v-monto'),
+    vendedor:val('v-vendedor'), condicion:val('v-condicion'), estado:val('v-estado'), obs:val('v-obs')
+  };
+  DB.ventas.unshift(r); save(); renderVentas(); refreshMetrics('ventas');
+  syncModule('ventas'); clearForm('ventas'); alert('Venta guardada ✓');
+}
+
+function saveCobranza() {
+  const r = {
+    id:uid(), fecha:val('c-fecha'), banco:val('c-banco'), cliente:val('c-cliente'),
+    monto:num('c-monto'), ref:val('c-ref'), tasa:num('c-tasa'), bs:num('c-bs'), obs:val('c-obs')
+  };
+  DB.cobranzas.unshift(r); save(); renderCobranzas(); refreshMetrics('cobranzas');
+  syncModule('cobranzas'); clearForm('cobranzas'); alert('Cobro registrado ✓');
+}
+
+function saveCxc() {
+  const r = {
+    id:uid(), femision:val('cxc-femision'), fvcto:val('cxc-fvcto'), cliente:val('cxc-cliente'),
+    ndoc:val('cxc-ndoc'), monto:num('cxc-monto'), estado:val('cxc-estado'), vendedor:val('cxc-vendedor')
+  };
+  DB.cxc.unshift(r); save(); renderCxc(); refreshMetrics('cxc');
+  syncModule('cxc'); clearForm('cxc'); alert('CxC guardada ✓');
+}
+
+function saveCxp() {
+  const r = {
+    id:uid(), fecha:val('cxp-fecha'), categoria:val('cxp-cat'), beneficiario:val('cxp-benef'),
+    concepto:val('cxp-concepto'), monto:num('cxp-monto'), fvcto:val('cxp-fvcto'), estado:val('cxp-estado')
+  };
+  DB.cxp.unshift(r); save(); renderCxp(); refreshMetrics('cxp');
+  syncModule('cxp'); clearForm('cxp'); alert('CxP guardada ✓');
+}
+
+function saveGasto() {
+  const r = {
+    id:uid(), fecha:val('g-fecha'), categoria:val('g-cat'), proveedor:val('g-prov'),
+    concepto:val('g-concepto'), monto:num('g-monto'), ndoc:val('g-ndoc'), forma:val('g-forma')
+  };
+  DB.gastos.unshift(r); save(); renderGastos(); refreshMetrics('gastos');
+  syncModule('gastos'); clearForm('gastos'); alert('Gasto guardado ✓');
+}
+
+function saveImpProyeccion() {
+  const r = {
+    id:uid(), nombre:val('ip-nombre'), periodo:val('ip-periodo'), fvcto:val('ip-fvcto'),
+    monto:num('ip-monto'), obs:val('ip-obs'), estado:'Pendiente'
+  };
+  DB.impProy.unshift(r); save(); renderImpProy(); syncModule('impProy'); alert('Vencimiento agregado ✓');
+}
+
+function saveImpPago() {
+  const r = {
+    id:uid(), nombre:val('ir-nombre'), periodo:val('ir-periodo'), fpago:val('ir-fpago'),
+    monto:num('ir-monto'), comp:val('ir-comp'), obs:val('ir-obs')
+  };
+  DB.impPagos.unshift(r); save(); renderImpPagos(); syncModule('impPagos'); alert('Pago registrado ✓');
+}
+
+// ── DELETE ──
+function del(arr, id) {
+  const i = arr.findIndex(r=>r.id===id); if(i>=0){arr.splice(i,1);} save();
+  const modMap = {'DB.produccion':'produccion','DB.inventario':'inventario','DB.ventas':'ventas',
+    'DB.cobranzas':'cobranzas','DB.cxc':'cxc','DB.cxp':'cxp','DB.gastos':'gastos',
+    'DB.impProy':'impProy','DB.impPagos':'impPagos'};
+  const mod = Object.keys(modMap).find(k => arr === DB[modMap[k]]);
+  if(mod) syncModule(modMap[mod]);
+}
+
+// ── RENDER FUNCTIONS ──
+function renderProduccion() {
+  const tb = $('prod-tbody');
+  if(!DB.produccion.length){tb.innerHTML='<tr><td colspan="10" class="empty">Sin registros aún</td></tr>';return;}
+  tb.innerHTML = DB.produccion.slice(0,50).map(r=>`
+    <tr><td>${r.fecha}</td><td>${r.turno.split(' ')[0]}</td>
+    <td>${fmtN(r.dispensador)}</td><td>${fmtN(r.plus)}</td><td>${fmtN(r.megapack)}</td><td>${fmtN(r.granel)}</td>
+    <td>${r.bobinas}</td><td>${r.desperdicio} kg</td>
+    <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.obs}">${r.obs||'—'}</td>
+    <td>${delBtn('DB.produccion',r.id,"renderProduccion();refreshMetrics('produccion')")}</td></tr>`).join('');
+}
+
+function renderInventario() {
+  const tb = $('inv-tbody');
+  if(!DB.inventario.length){tb.innerHTML='<tr><td colspan="8" class="empty">Sin registros aún</td></tr>';return;}
+  tb.innerHTML = DB.inventario.slice(0,30).map(r=>`
+    <tr><td>${r.fecha}</td><td>${r.periodo}</td>
+    <td>${fmtN(r.dispensador)}</td><td>${fmtN(r.plus)}</td><td>${fmtN(r.megapack)}</td>
+    <td>${r.bobinas}</td><td>${fmtN(r.bxfab)}</td>
+    <td>${delBtn('DB.inventario',r.id,'renderInventario()')}</td></tr>`).join('');
+}
+
+function renderVentas() {
+  const tb = $('ven-tbody');
+  if(!DB.ventas.length){tb.innerHTML='<tr><td colspan="10" class="empty">Sin registros aún</td></tr>';return;}
+  tb.innerHTML = DB.ventas.slice(0,50).map(r=>`
+    <tr><td>${r.fecha}</td><td><span class="badge badge-info">${r.tipo}</span></td>
+    <td>${r.ndoc||'—'}</td><td>${r.cliente||'—'}</td><td>${r.producto}</td>
+    <td>${fmtN(r.bultos)}</td><td>${fmt$(r.monto)}</td><td>${r.condicion}</td>
+    <td>${badgeState(r.estado)}</td>
+    <td><button class="btn btn-sm" style="background:var(--brand-light);color:var(--brand);border:1px solid var(--brand)" onclick="generarNE('${r.id}')">🖨️</button></td>
+    <td>${delBtn('DB.ventas',r.id,"renderVentas();refreshMetrics('ventas')")}</td></tr>`).join('');
+}
+
+function renderCobranzas() {
+  const tb = $('cobr-tbody');
+  if(!DB.cobranzas.length){tb.innerHTML='<tr><td colspan="7" class="empty">Sin registros aún</td></tr>';return;}
+  tb.innerHTML = DB.cobranzas.slice(0,50).map(r=>`
+    <tr><td>${r.fecha}</td><td>${r.banco}</td><td>${r.cliente||'—'}</td>
+    <td>${fmt$(r.monto)}</td><td>${r.tasa||'—'}</td><td>${r.ref||'—'}</td>
+    <td>${delBtn('DB.cobranzas',r.id,"renderCobranzas();refreshMetrics('cobranzas')")}</td></tr>`).join('');
+}
+
+function renderCxc() {
+  const tb = $('cxc-tbody');
+  if(!DB.cxc.length){tb.innerHTML='<tr><td colspan="8" class="empty">Sin registros aún</td></tr>';return;}
+  tb.innerHTML = DB.cxc.slice(0,50).map(r=>`
+    <tr><td>${r.femision||'—'}</td><td>${r.fvcto||'—'}</td><td>${r.cliente||'—'}</td>
+    <td>${r.ndoc||'—'}</td><td>${fmt$(r.monto)}</td><td>${badgeState(r.estado)}</td>
+    <td>${r.vendedor||'—'}</td>
+    <td>${delBtn('DB.cxc',r.id,"renderCxc();refreshMetrics('cxc')")}</td></tr>`).join('');
+}
+
+function renderCxp() {
+  const tb = $('cxp-tbody');
+  if(!DB.cxp.length){tb.innerHTML='<tr><td colspan="8" class="empty">Sin registros aún</td></tr>';return;}
+  tb.innerHTML = DB.cxp.slice(0,50).map(r=>`
+    <tr><td>${r.fecha}</td><td>${r.categoria}</td><td>${r.beneficiario||'—'}</td>
+    <td>${r.concepto||'—'}</td><td>${fmt$(r.monto)}</td><td>${r.fvcto||'—'}</td>
+    <td>${badgeState(r.estado)}</td>
+    <td>${delBtn('DB.cxp',r.id,"renderCxp();refreshMetrics('cxp')")}</td></tr>`).join('');
+}
+
+function renderGastos() {
+  const tb = $('gas-tbody');
+  if(!DB.gastos.length){tb.innerHTML='<tr><td colspan="7" class="empty">Sin registros aún</td></tr>';return;}
+  tb.innerHTML = DB.gastos.slice(0,50).map(r=>`
+    <tr><td>${r.fecha}</td><td>${r.categoria}</td><td>${r.proveedor||'—'}</td>
+    <td>${r.concepto||'—'}</td><td>${fmt$(r.monto)}</td><td>${r.forma}</td>
+    <td>${delBtn('DB.gastos',r.id,"renderGastos();refreshMetrics('gastos')")}</td></tr>`).join('');
+}
+
+function renderImpProy() {
+  const tb = $('imp-proy-tbody');
+  if(!DB.impProy.length){tb.innerHTML='<tr><td colspan="6" class="empty">Sin vencimientos registrados</td></tr>';return;}
+  const sorted = [...DB.impProy].sort((a,b)=>a.fvcto>b.fvcto?1:-1);
+  tb.innerHTML = sorted.map(r => {
+    const dias = r.fvcto ? Math.round((new Date(r.fvcto)-new Date())/86400000) : null;
+    const est = dias === null ? 'badge-gray' : dias < 0 ? 'badge-danger' : dias <= 7 ? 'badge-warn' : 'badge-ok';
+    const estLabel = dias === null ? '—' : dias < 0 ? `Vencido (${Math.abs(dias)}d)` : `${dias}d restantes`;
+    return `<tr><td>${r.nombre}</td><td>${r.periodo||'—'}</td><td>${r.fvcto||'—'}</td>
+    <td>${fmt$(r.monto)}</td><td><span class="badge ${est}">${estLabel}</span></td>
+    <td>${delBtn('DB.impProy',r.id,'renderImpProy()')}</td></tr>`;
+  }).join('');
+}
+
+function renderImpPagos() {
+  const tb = $('imp-pagos-tbody');
+  if(!DB.impPagos.length){tb.innerHTML='<tr><td colspan="6" class="empty">Sin pagos registrados</td></tr>';return;}
+  tb.innerHTML = DB.impPagos.map(r=>`
+    <tr><td>${r.nombre}</td><td>${r.periodo||'—'}</td><td>${r.fpago||'—'}</td>
+    <td>${fmt$(r.monto)}</td><td>${r.comp||'—'}</td>
+    <td>${delBtn('DB.impPagos',r.id,'renderImpPagos()')}</td></tr>`).join('');
+}
+
+// ── METRICS ──
+function metricCard(label, val, sub, cls='') {
+  return `<div class="metric ${cls}"><div class="metric-label">${label}</div><div class="metric-value">${val}</div>${sub?`<div class="metric-sub">${sub}</div>`:''}</div>`;
+}
+
+function refreshMetrics(page) {
+  const thisMonth = today().slice(0,7);
+  if(page==='produccion') {
+    const mes = DB.produccion.filter(r=>r.fecha.startsWith(thisMonth));
+    const totDisp = mes.reduce((s,r)=>s+r.dispensador,0);
+    const totPlus = mes.reduce((s,r)=>s+r.plus,0);
+    const totMega = mes.reduce((s,r)=>s+r.megapack,0);
+    const totBob = mes.reduce((s,r)=>s+r.bobinas,0);
+    $('prod-metrics').innerHTML =
+      metricCard('Dispensador (mes)',fmtN(totDisp),'bultos producidos') +
+      metricCard('Plus (mes)',fmtN(totPlus),'bultos producidos') +
+      metricCard('MegaPack (mes)',fmtN(totMega),'bultos producidos') +
+      metricCard('Bobinas consumidas',totBob.toFixed(1),'este mes');
+  }
+  if(page==='ventas') {
+    const mes = DB.ventas.filter(r=>r.fecha.startsWith(thisMonth));
+    const total = mes.reduce((s,r)=>s+r.monto,0);
+    const pend = DB.ventas.filter(r=>r.estado==='Pendiente despacho').length;
+    $('ven-metrics').innerHTML =
+      metricCard('Ventas del mes',fmt$(total), total>=10000?'✓ Sobre punto equilibrio':'Meta: $10,000', total>=10000?'ok':'warn') +
+      metricCard('N° operaciones',mes.length,'este mes') +
+      metricCard('Pend. despacho',pend,'pedidos',pend>5?'warn':'') +
+      metricCard('Total registrado',fmt$(DB.ventas.reduce((s,r)=>s+r.monto,0)),'histórico');
+  }
+  if(page==='cobranzas') {
+    const mes = DB.cobranzas.filter(r=>r.fecha.startsWith(thisMonth));
+    const total = mes.reduce((s,r)=>s+r.monto,0);
+    const ban = mes.filter(r=>r.banco==='Banesco').reduce((s,r)=>s+r.monto,0);
+    const mer = mes.filter(r=>r.banco.includes('Mercantil')).reduce((s,r)=>s+r.monto,0);
+    $('cobr-metrics').innerHTML =
+      metricCard('Cobranza del mes',fmt$(total),total>=8300?'✓ Sobre meta':'Meta: $8,300',total>=8300?'ok':'warn') +
+      metricCard('Banesco',fmt$(ban),'este mes') +
+      metricCard('Mercantil',fmt$(mer),'este mes');
+  }
+  if(page==='cxc') {
+    const tot = DB.cxc.filter(r=>r.estado!=='Cobrado').reduce((s,r)=>s+r.monto,0);
+    const venc = DB.cxc.filter(r=>r.estado==='+30 días').reduce((s,r)=>s+r.monto,0);
+    const pct = tot>0?(venc/tot*100).toFixed(0):0;
+    $('cxc-metrics').innerHTML =
+      metricCard('Total CxC activa',fmt$(tot),'excluyendo cobrados') +
+      metricCard('+30 días',fmt$(venc),'cartera vencida',parseFloat(pct)>30?'danger':parseFloat(pct)>15?'warn':'ok') +
+      metricCard('% vencida',pct+'%','sobre total CxC',parseFloat(pct)>30?'danger':parseFloat(pct)>15?'warn':'ok') +
+      metricCard('N° clientes activos',[...new Set(DB.cxc.filter(r=>r.estado!=='Cobrado').map(r=>r.cliente))].length,'con saldo pendiente');
+  }
+  if(page==='cxp') {
+    const tot = DB.cxp.filter(r=>r.estado!=='Pagado').reduce((s,r)=>s+r.monto,0);
+    const pend = DB.cxp.filter(r=>r.estado==='Pendiente').length;
+    $('cxp-metrics').innerHTML =
+      metricCard('Total CxP pendiente',fmt$(tot),'sin pagar') +
+      metricCard('N° compromisos',pend,'pendientes',pend>5?'warn':'') +
+      metricCard('Pagado (total)',fmt$(DB.cxp.filter(r=>r.estado==='Pagado').reduce((s,r)=>s+r.monto,0)),'histórico');
+  }
+  if(page==='gastos') {
+    const mes = DB.gastos.filter(r=>r.fecha.startsWith(thisMonth));
+    const total = mes.reduce((s,r)=>s+r.monto,0);
+    $('gas-metrics').innerHTML =
+      metricCard('Gastos del mes',fmt$(total),'presupuesto: $7,356',total>7356?'danger':total>6000?'warn':'ok') +
+      metricCard('N° registros',mes.length,'este mes') +
+      metricCard('Total histórico',fmt$(DB.gastos.reduce((s,r)=>s+r.monto,0)),'todos los meses');
+  }
+}
+
+// ── EXPORT EXCEL ──
+function exportExcel() {
+  if(typeof XLSX === 'undefined'){ alert('Cargando librería... intenta de nuevo en un momento'); return; }
+  const wb = XLSX.utils.book_new();
+  function addSheet(name, data, cols) {
+    if(!data.length){ XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([[]]  ), name); return; }
+    const rows = [cols, ...data.map(r=>cols.map(c=>{
+      const keys = {
+        'Fecha':'fecha','Turno':'turno','Responsable':'responsable',
+        'Dispensador':'dispensador','Plus':'plus','MegaPack':'megapack','Granel':'granel',
+        'Bobinas':'bobinas','Desperdicio (kg)':'desperdicio','Paradas (h)':'paradas','Obs.':'obs',
+        'Período':'periodo','Bultos x Fab.':'bxfab','EP Disp.':'ep1','EP Plus':'ep2','EP Mega':'ep3','Emp. Sec.':'es',
+        'Tipo':'tipo','N° Doc':'ndoc','Cliente':'cliente','Producto':'producto','Bultos':'bultos',
+        'Precio $':'precio','Monto $':'monto','Vendedor':'vendedor','Condición':'condicion','Estado':'estado',
+        'Banco':'banco','Ref.':'ref','Tasa BCV':'tasa','Monto Bs':'bs',
+        'Emisión':'femision','Vencimiento':'fvcto','Fecha pago':'fpago','Fecha':'fecha',
+        'Categoría':'categoria','Beneficiario':'beneficiario','Concepto':'concepto','Forma pago':'forma',
+        'N° Comprobante':'comp','Impuesto':'nombre','Monto est. $':'monto','Monto pag. $':'monto'
+      };
+      return r[keys[c]||c.toLowerCase()] ?? '';
+    }))];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), name);
+  }
+
+  addSheet('Producción', DB.produccion, ['Fecha','Turno','Responsable','Dispensador','Plus','MegaPack','Granel','Bobinas','Desperdicio (kg)','Paradas (h)','Obs.']);
+  addSheet('Inventario', DB.inventario, ['Fecha','Período','Dispensador','Plus','MegaPack','Granel','Bobinas','Bultos x Fab.']);
+  addSheet('Ventas', DB.ventas, ['Fecha','Tipo','N° Doc','Cliente','Producto','Bultos','Monto $','Vendedor','Condición','Estado']);
+  addSheet('Cobranzas', DB.cobranzas, ['Fecha','Banco','Cliente','Monto $','Tasa BCV','Ref.']);
+  addSheet('CxC', DB.cxc, ['Emisión','Vencimiento','Cliente','N° Doc','Monto $','Estado','Vendedor']);
+  addSheet('CxP', DB.cxp, ['Fecha','Categoría','Beneficiario','Concepto','Monto $','Estado']);
+  addSheet('Gastos', DB.gastos, ['Fecha','Categoría','Beneficiario','Concepto','Monto $','Forma pago']);
+  addSheet('Imp. Proyección', DB.impProy, ['Impuesto','Período','Vencimiento','Monto est. $']);
+  addSheet('Imp. Pagos', DB.impPagos, ['Impuesto','Período','Fecha pago','Monto pag. $','N° Comprobante']);
+
+  const fname = 'NOAM_Gestion_' + today().replace(/-/g,'') + '.xlsx';
+  XLSX.writeFile(wb, fname);
+}
+
+// ── GENERADOR DE NOTA DE ENTREGA ──
+function generarNE(id) {
+  const r = DB.ventas.find(v => v.id === id);
+  if (!r) return;
+
+  const neNum = r.ndoc || ('NE-' + String(DB.ventas.indexOf(r) + 1).padStart(4,'0'));
+  const precioUnit = r.precio || (r.bultos > 0 ? (r.monto / r.bultos) : 0);
+  const usuarioNE = currentUser ? currentUser.nombre : 'Sistema';
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NE ${neNum} — NOAM</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;padding:24px;max-width:680px;margin:0 auto}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #f75f0e;padding-bottom:16px;margin-bottom:20px}
+  .brand{font-size:36px;font-weight:900;color:#f75f0e;letter-spacing:3px;line-height:1}
+  .brand-sub{font-size:10px;color:#666;margin-top:3px;letter-spacing:1px}
+  .ne-box{text-align:right}
+  .ne-label{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:1px}
+  .ne-num{font-size:22px;font-weight:700;color:#f75f0e}
+  .ne-fecha{font-size:12px;color:#555;margin-top:4px}
+  .section{margin-bottom:18px}
+  .section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#999;margin-bottom:6px;border-bottom:1px solid #eee;padding-bottom:4px}
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .info-item label{font-size:10px;color:#999;display:block}
+  .info-item span{font-size:13px;font-weight:600;color:#1a1a1a}
+  table{width:100%;border-collapse:collapse;margin-bottom:16px}
+  th{background:#f75f0e;color:#fff;padding:8px 10px;text-align:left;font-size:11px;font-weight:600}
+  td{padding:9px 10px;border-bottom:1px solid #f0ede8;font-size:13px}
+  tr:last-child td{border-bottom:none}
+  tr:nth-child(even) td{background:#fafaf8}
+  .totals{margin-left:auto;width:280px}
+  .total-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}
+  .total-row.main{border-top:2px solid #f75f0e;margin-top:6px;padding-top:10px;font-size:16px;font-weight:700;color:#f75f0e}
+  .iva-note{font-size:10px;color:#999;text-align:right;margin-top:4px}
+  .firmas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px}
+  .firma-line{border-top:1px solid #999;padding-top:6px;font-size:11px;color:#555;text-align:center}
+  .footer{margin-top:30px;padding-top:12px;border-top:1px solid #eee;text-align:center;font-size:10px;color:#aaa}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:#fff3ee;color:#f75f0e;border:1px solid #f75f0e}
+  @media print{
+    body{padding:12px}
+    button{display:none!important}
+    @page{margin:1.5cm}
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="brand">NOAM</div>
+    <div class="brand-sub">Fábrica de Servilletas</div>
+    <div style="font-size:10px;color:#999;margin-top:8px">RIF: J-40242424-8</div>
+    <div style="font-size:10px;color:#999">Gran Caracas, Venezuela</div>
+  </div>
+  <div class="ne-box">
+    <div class="ne-label">Nota de Entrega</div>
+    <div class="ne-num">${neNum}</div>
+    <div class="ne-fecha">Fecha: ${r.fecha}</div>
+    <div style="margin-top:8px"><span class="badge">${r.condicion}</span></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Datos del cliente</div>
+  <div class="info-grid">
+    <div class="info-item"><label>Cliente</label><span>${r.cliente || '—'}</span></div>
+    <div class="info-item"><label>Vendedor</label><span>${r.vendedor || '—'}</span></div>
+    <div class="info-item"><label>Condición de pago</label><span>${r.condicion}</span></div>
+    <div class="info-item"><label>Elaborado por</label><span>${usuarioNE}</span></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Detalle de productos</div>
+  <table>
+    <thead><tr><th>#</th><th>Producto</th><th>Cantidad</th><th>Precio Unit. $</th><th>Total $</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Servilletas ${r.producto}</td>
+        <td>${fmtN(r.bultos)} bultos</td>
+        <td>${precioUnit > 0 ? fmt$(precioUnit) : '—'}</td>
+        <td>${fmt$(r.monto)}</td>
+      </tr>
+    </tbody>
+  </table>
+  ${r.obs ? `<div style="font-size:11px;color:#666;background:#fafaf8;padding:8px 10px;border-radius:6px;border-left:3px solid #f75f0e"><strong>Observaciones:</strong> ${r.obs}</div>` : ''}
+</div>
+
+<div class="totals">
+  <div class="total-row"><span>Subtotal</span><span>${fmt$(r.monto)}</span></div>
+  <div class="total-row main"><span>TOTAL USD</span><span>${fmt$(r.monto)}</span></div>
+  <div class="iva-note">* Precios no incluyen IVA (16%)<br>* Pagadero a tasa BCV del día de pago</div>
+</div>
+
+<div class="firmas">
+  <div class="firma-line">Firma y sello NOAM<br><span style="color:#aaa">Despachado por</span></div>
+  <div class="firma-line">Firma y cédula<br><span style="color:#aaa">Recibí conforme</span></div>
+</div>
+
+<div class="footer">
+  NOAM · Sistema de Gestión · NE generada el ${new Date().toLocaleDateString('es-VE',{day:'2-digit',month:'long',year:'numeric'})}
+  &nbsp;·&nbsp; Este documento no tiene validez fiscal
+</div>
+
+<br>
+<div style="text-align:center">
+  <button onclick="window.print()" style="padding:10px 28px;background:#f75f0e;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-right:8px">🖨️ Imprimir / Guardar PDF</button>
+  <button onclick="window.close()" style="padding:10px 20px;background:#f0ede8;color:#555;border:none;border-radius:8px;font-size:14px;cursor:pointer">Cerrar</button>
+</div>
+
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=720,height=900');
+  win.document.write(html);
+  win.document.close();
+}
+
+// ── INIT ──
+renderLoginUsers();
+load(); // carga local primero (rápido)
+setDefaults();
+$('header-date').textContent = new Date().toLocaleDateString('es-VE',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+['produccion','inventario','ventas','cobranzas','cxc','cxp','gastos'].forEach(p => {
+  const fn = {produccion:renderProduccion,inventario:renderInventario,ventas:renderVentas,
+    cobranzas:renderCobranzas,cxc:renderCxc,cxp:renderCxp,gastos:renderGastos};
+  fn[p]();
+  refreshMetrics(p);
+});
+renderImpProy(); renderImpPagos();
+</script>
+</body>
+</html>
